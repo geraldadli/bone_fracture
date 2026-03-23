@@ -58,7 +58,20 @@ def load_model():
             "Make sure `Random_Forest.pkl` is in the same folder as `streamlit_app.py`."
         )
         st.stop()
-    return joblib.load(MODEL_PATH)
+    try:
+        return joblib.load(MODEL_PATH)
+    except Exception as e:
+        import sklearn
+        st.error(
+            f"**Failed to load model.** This is almost always a scikit-learn version mismatch.\n\n"
+            f"- Streamlit Cloud is running **scikit-learn {sklearn.__version__}**\n"
+            f"- Your `.pkl` was saved with a different version\n\n"
+            f"**Fix:** Run the *Section 8* cell in your Kaggle notebook to print the exact "
+            f"sklearn version, then update `requirements.txt` to pin it "
+            f"(e.g. `scikit-learn==1.3.2`) and re-push to GitHub.\n\n"
+            f"Raw error: `{e}`"
+        )
+        st.stop()
 
 
 # ─────────────────────────────────────────────────────────────
