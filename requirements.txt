@@ -5,7 +5,4 @@ scipy>=1.11.0
 Pillow>=10.0.0
 joblib>=1.3.0
 matplotlib>=3.8.0
-# ── IMPORTANT: replace the version below with the EXACT version
-# ── printed by the "Section 8" cell in your Kaggle notebook.
-# ── Mismatched sklearn versions cause the pkl to fail on load.
 scikit-learn==1.3.2
