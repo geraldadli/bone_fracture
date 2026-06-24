@@ -273,7 +273,14 @@ def build_pipeline_figure(pil_image: Image.Image) -> plt.Figure:
 
 
 def build_feature_bar(feats: dict) -> plt.Figure:
-    colors = {"sobel": "#e74c3c", "canny": "#3498db", "hough": "#2ecc71", "ws": "#f39c12"}
+    colors = {
+        "sobel": "#e74c3c",
+        "canny": "#3498db",
+        "hough": "#2ecc71",
+        # "ws": "#f39c12",   <-- remove
+    }
+    # Remove watershed features
+    feats = {k: v for k, v in feats.items() if not k.startswith("ws_")}
     vals  = np.array(list(feats.values()), dtype=float)
     names = list(feats.keys())
     vmax  = np.abs(vals).max() + 1e-8
@@ -281,8 +288,10 @@ def build_feature_bar(feats: dict) -> plt.Figure:
     idx   = np.argsort(np.abs(norm))[::-1][:15]
     top_n = [names[i] for i in idx]
     top_v = [norm[i]  for i in idx]
-    bar_c = [next((c for p, c in colors.items() if n.startswith(p)), "#95a5a6") for n in top_n]
-
+    bar_c = [
+        next((c for p, c in colors.items() if n.startswith(p)), "#95a5a6")
+        for n in top_n
+    ]
     fig, ax = plt.subplots(figsize=(7, 5))
     fig.patch.set_facecolor("#0f1117")
     ax.set_facecolor("#0f1117")
@@ -430,7 +439,6 @@ def main():
                 <span style='color:#e74c3c'>■</span> Sobel — gradient magnitude<br>
                 <span style='color:#3498db'>■</span> Canny — edge structure<br>
                 <span style='color:#2ecc71'>■</span> Hough — line orientation<br>
-                <span style='color:#f39c12'>■</span> Watershed — bone segments
             </div>""", unsafe_allow_html=True)
 
     # ── Download features ─────────────────────────────────────
