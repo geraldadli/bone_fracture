@@ -662,7 +662,7 @@ def main():
         )
         show_pipeline = st.checkbox("Show CV pipeline breakdown", value=True)
         show_features = st.checkbox("Show feature bar chart",     value=True)
-        show_explanations = st.checkbox("Show algorithm explanations", value=False)
+        show_explanations = st.checkbox("Show algorithm explanations", value=True)
         st.markdown("---")
         st.markdown("### 📋 Pipeline\n"
                     "1. **CLAHE** — local contrast boost\n"
