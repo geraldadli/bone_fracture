@@ -7,6 +7,8 @@ Deployed with Streamlit. Loads Random_Forest.pkl from the same directory.
 Directory layout expected:
     ├── streamlit_app.py
     ├── Random_Forest.pkl
+    ├── Fractured/          ← sample X-rays with fractures
+    ├── Not Fractured/      ← sample X-rays without fractures
     └── requirements.txt
 """
 
@@ -37,14 +39,16 @@ st.set_page_config(
 # ─────────────────────────────────────────────────────────────
 # Constants
 # ─────────────────────────────────────────────────────────────
-IMG_SIZE        = (256, 256)
-CANNY_LOW       = 30
-CANNY_HIGH      = 100
-HOUGH_THRESHOLD = 60
-HOUGH_MIN_LEN   = 40
-HOUGH_MAX_GAP   = 10
-CLASS_NAMES     = ["fractured", "not fractured"]
-MODEL_PATH      = Path(__file__).parent / "Random_Forest.pkl"
+IMG_SIZE          = (256, 256)
+CANNY_LOW         = 30
+CANNY_HIGH        = 100
+HOUGH_THRESHOLD   = 60
+HOUGH_MIN_LEN     = 40
+HOUGH_MAX_GAP     = 10
+CLASS_NAMES       = ["fractured", "not fractured"]
+MODEL_PATH        = Path(__file__).parent / "Random_Forest.pkl"
+FRACTURED_DIR     = Path(__file__).parent / "Fractured"
+NOT_FRACTURED_DIR = Path(__file__).parent / "Not Fractured"
 
 
 # ─────────────────────────────────────────────────────────────
@@ -277,9 +281,7 @@ def build_feature_bar(feats: dict) -> plt.Figure:
         "sobel": "#e74c3c",
         "canny": "#3498db",
         "hough": "#2ecc71",
-        # "ws": "#f39c12",   <-- remove
     }
-    # Remove watershed features
     feats = {k: v for k, v in feats.items() if not k.startswith("ws_")}
     vals  = np.array(list(feats.values()), dtype=float)
     names = list(feats.keys())
@@ -307,6 +309,336 @@ def build_feature_bar(feats: dict) -> plt.Figure:
 
 
 # ─────────────────────────────────────────────────────────────
+# Sample image helpers
+# ─────────────────────────────────────────────────────────────
+def get_sample_files(folder: Path) -> list[Path]:
+    exts = ("*.jpg", "*.jpeg", "*.png")
+    files = []
+    for ext in exts:
+        files.extend(sorted(folder.glob(ext)))
+    return files
+
+
+# ─────────────────────────────────────────────────────────────
+# Algorithm explanation section
+# ─────────────────────────────────────────────────────────────
+def show_algorithm_explanations():
+    st.markdown("---")
+    st.markdown("## 📖 Algorithm Explanations")
+    st.markdown(
+        "Each classical computer vision technique below contributes a group of features "
+        "that the Random Forest classifier uses to decide whether a bone is fractured."
+    )
+
+    # ── Sobel ────────────────────────────────────────────────
+    with st.expander("🔴 Sobel — Gradient Edge Detection  *(14 features)*", expanded=False):
+        col1, col2 = st.columns([3, 2], gap="large")
+        with col1:
+            st.markdown("""
+**What it does**
+
+The Sobel operator slides two small 3×3 kernels across the image — one that
+detects *horizontal* intensity changes (Gx) and one that detects *vertical*
+changes (Gy). Combining them gives the **gradient magnitude**:
+
+> **M = √(Gx² + Gy²)**
+
+Bright pixels in the magnitude map mean a large, sudden change in brightness —
+i.e., an edge, boundary, or surface discontinuity.
+
+**Why it matters for fractures**
+
+A fractured bone shows a sharp break in the cortical (outer) shell that
+creates very high gradient values along the fracture line. Intact bone has
+smooth, gently-varying brightness. The pipeline summarises the entire magnitude
+map into 14 statistics to capture this difference.
+
+**Key signal → `sobel_high_ratio`**
+The fraction of pixels with magnitude above *mean + 2σ*. Fractured bones
+typically show a higher proportion of strong-gradient pixels because the
+fracture line acts like an additional strong edge inside the bone.
+
+**All 14 features**
+`sobel_mean` · `sobel_std` · `sobel_max`
+· `sobel_p25/50/75/90/95`
+· `sobel_energy` · `sobel_entropy`
+· `sobel_high_ratio` · `sobel_dir_std`
+· `sobel_horiz_energy` · `sobel_vert_energy`
+            """)
+        with col2:
+            st.markdown("""
+**The two Sobel kernels**
+
+```
+Gx (horizontal)    Gy (vertical)
+ -1   0  +1         -1  -2  -1
+ -2   0  +2          0   0   0
+ -1   0  +1         +1  +2  +1
+```
+
+Each output pixel = dot product of the
+kernel with the 3×3 neighbourhood.
+
+**Where it sits in the pipeline**
+
+```
+Original image
+  ↓ CLAHE
+  ↓ Bilateral filter
+  ↓ Gaussian blur   ← reduces noise
+  ↓ Sobel           ← applied here
+```
+
+The Gaussian blur before Sobel is
+critical — without it, noise produces
+many false high-gradient pixels.
+            """)
+            st.info(
+                "**Colour in pipeline view:** hot colourmap — "
+                "white/yellow = high gradient, black = flat region.",
+                icon="🎨",
+            )
+
+    # ── Canny ────────────────────────────────────────────────
+    with st.expander("🔵 Canny — Multi-Stage Edge Detection  *(9 features)*", expanded=False):
+        col1, col2 = st.columns([3, 2], gap="large")
+        with col1:
+            st.markdown("""
+**What it does**
+
+Canny builds on Sobel but adds two extra steps to produce clean,
+**thin, single-pixel-wide edges** rather than thick blobs:
+
+1. **Gaussian smoothing** — suppress noise before gradient computation
+2. **Sobel gradients** — compute Gx, Gy, magnitude, and direction
+3. **Non-maximum suppression** — keep only the pixel with the *highest* gradient
+   in the direction perpendicular to the edge, discarding its neighbours
+4. **Double-threshold hysteresis** — pixels above `HIGH` are definite edges;
+   pixels below `LOW` are discarded; pixels in between are kept only if they
+   touch a definite edge
+
+Parameters used in this pipeline: **low = 30, high = 100**.
+
+**Why it matters for fractures**
+
+The resulting binary edge map is fed to `findContours`, which traces connected
+groups of edge pixels. A fractured bone produces **many short, disconnected
+contours** (fragments of the fracture line) rather than the few long, smooth
+contours you see around intact bone shafts.
+
+**Key signal → `canny_small_contour_ratio`**
+The fraction of contours with perimeter < 10 px. Fractures scatter edge
+pixels into tiny isolated fragments, raising this ratio significantly.
+
+**All 9 features**
+`canny_edge_density` · `canny_edge_count`
+· `canny_contour_count`
+· `canny_mean/std/max_contour_len`
+· `canny_small_contour_ratio`
+· `canny_convexity_defect` · `canny_edge_variance`
+            """)
+        with col2:
+            st.markdown("""
+**Threshold logic**
+
+```
+gradient ≥ HIGH (100)
+  → definite edge ✓
+
+gradient < LOW  (30)
+  → not an edge  ✗
+
+LOW ≤ gradient < HIGH
+  → edge only if connected
+    to a definite edge ↔
+```
+
+Hysteresis prevents weak-gradient
+edges from creating noise while
+still letting them extend along
+real boundaries.
+
+**After Canny**
+
+The binary edge map is passed
+directly into the Hough Transform
+for line detection.
+            """)
+            st.info(
+                "**Colour in pipeline view:** grayscale — "
+                "white pixels = detected edges, black = background.",
+                icon="🎨",
+            )
+
+    # ── Hough ────────────────────────────────────────────────
+    with st.expander("🟢 Hough Transform — Line Orientation Analysis  *(9 features)*", expanded=False):
+        col1, col2 = st.columns([3, 2], gap="large")
+        with col1:
+            st.markdown("""
+**What it does**
+
+The **Probabilistic Hough Transform** (`cv2.HoughLinesP`) looks at the Canny
+edge map and votes for line segments in polar parameter space (ρ, θ).
+Every edge pixel "votes" for all lines it could belong to; peaks in the
+accumulator reveal actual line segments.
+
+Only segments that pass minimum criteria are returned:
+- Accumulator threshold: **60** votes
+- Minimum line length: **40 px**
+- Maximum allowed gap inside a line: **10 px**
+
+**Why it matters for fractures**
+
+Long bones naturally have edges running roughly *parallel* to the bone's
+long axis. A fracture creates additional edges that run **perpendicular**
+(or at odd angles) to the long axis — the fracture plane itself. This
+raises both the variance of detected angles and the fraction of lines
+that are nearly perpendicular to the dominant direction.
+
+**Key signals**
+- **`hough_perpendicular_ratio`** — fraction of lines deviating ≥ 45° from
+  the dominant angle; strongly elevated in fractured images.
+- **`hough_std_angle`** — high angular spread suggests disordered edges
+  consistent with a fracture disrupting normal bone structure.
+- **`hough_angle_entropy`** — uniform angle distribution (high entropy)
+  means lines point in many directions, a fracture indicator.
+
+**All 9 features**
+`hough_line_count` · `hough_mean/std_length`
+· `hough_mean/std_angle` · `hough_angle_entropy`
+· `hough_dominant_angle` · `hough_perpendicular_ratio`
+· `hough_short_line_ratio`
+            """)
+        with col2:
+            st.markdown("""
+**Parameter trade-offs**
+
+```
+threshold ↑
+  → fewer but more
+    confident lines
+
+min_length ↑
+  → eliminates short stubs
+    (noise artefacts)
+
+max_gap ↓
+  → won't bridge
+    over real breaks
+```
+
+**Angle convention**
+
+Angles are in **[0°, 90°]** —
+the absolute angle of each
+segment relative to horizontal,
+regardless of direction.
+
+**Dominant angle**
+
+The histogram bin with the most
+lines. All other lines are compared
+against this to compute
+`hough_perpendicular_ratio`.
+            """)
+            st.info(
+                "**Colour in pipeline view:** detected lines drawn in green "
+                "over the CLAHE-enhanced image.",
+                icon="🎨",
+            )
+
+    # ── Watershed ────────────────────────────────────────────
+    with st.expander("🟠 Watershed — Bone Region Segmentation  *(10 features)*", expanded=False):
+        col1, col2 = st.columns([3, 2], gap="large")
+        with col1:
+            st.markdown("""
+**What it does**
+
+Watershed treats the **distance-transformed** binary image as a topographic
+landscape — pixels far from any background become mountain peaks, pixels near
+the background become valleys. The algorithm then "floods" water from local
+peaks (seeds) until two flood fronts collide, drawing a **watershed boundary**
+at the collision point.
+
+Steps in this pipeline:
+
+1. **Otsu thresholding** on bilateral-filtered image → binary bone/background mask
+2. **Morphological opening** (erosion + dilation) → remove tiny noise specks
+3. **Distance transform** → each foreground pixel gets its distance to the nearest
+   background pixel (peaks = bone centres)
+4. **Sure foreground** — pixels with distance > 0.5 × max → definite bone cores
+5. **Connected components** → label each bone core as a separate seed marker
+6. **`cv2.watershed()`** → grow each seed outward until boundaries are found;
+   boundary pixels are marked **−1**
+
+**Why it matters for fractures**
+
+An intact bone typically forms **one or two large, compact regions**. A fracture
+physically separates the bone into pieces, causing the segmentation to produce
+**more, smaller regions** with irregular (less compact) shapes. The boundary
+pixels (marked −1, shown in red) also increase in density at fracture sites.
+
+**Key signals**
+- **`ws_region_count`** — more regions → more fragmentation → likely fracture.
+- **`ws_small_region_ratio`** — fraction of regions with area < 200 px²; small
+  fragments accumulate around fracture lines.
+- **`ws_compactness_mean`** — compact (round) shapes score near 1; irregular
+  fracture fragments score much higher.
+
+**All 10 features**
+`ws_region_count`
+· `ws_mean/std/max/min_region_area`
+· `ws_area_ratio` · `ws_boundary_mean`
+· `ws_compactness_mean` · `ws_small_region_ratio`
+· `ws_region_entropy`
+            """)
+        with col2:
+            st.markdown("""
+**Distance transform intuition**
+
+```
+Binary mask (bone = white):
+  0 0 0 0 0
+  0 1 1 1 0
+  0 1 1 1 0   → distance from
+  0 1 1 1 0      background
+  0 0 0 0 0
+
+Distance values:
+  0 0 0 0 0
+  0 1 1 1 0
+  0 1 2 1 0   ← peak = 2
+  0 1 1 1 0
+  0 0 0 0 0
+```
+
+The peak becomes a seed — the
+algorithm grows outward from it.
+
+**Colour in pipeline view**
+
+```
+Each segmented region → random colour
+Watershed boundary   → red
+Background           → black
+```
+
+**Note on sensitivity**
+
+Watershed is sensitive to noise.
+CLAHE + bilateral filter before
+this step are essential to avoid
+over-segmentation (too many tiny
+spurious regions).
+            """)
+            st.info(
+                "**Colour in pipeline view:** each bone region is a unique random colour; "
+                "red pixels mark the watershed boundaries.",
+                icon="🎨",
+            )
+
+
+# ─────────────────────────────────────────────────────────────
 # Main UI
 # ─────────────────────────────────────────────────────────────
 def main():
@@ -330,6 +662,7 @@ def main():
         )
         show_pipeline = st.checkbox("Show CV pipeline breakdown", value=True)
         show_features = st.checkbox("Show feature bar chart",     value=True)
+        show_explanations = st.checkbox("Show algorithm explanations", value=False)
         st.markdown("---")
         st.markdown("### 📋 Pipeline\n"
                     "1. **CLAHE** — local contrast boost\n"
@@ -346,23 +679,94 @@ def main():
         else:
             st.error("`Random_Forest.pkl` not found")
 
-    # ── Upload ────────────────────────────────────────────────
-    uploaded = st.file_uploader(
-        "Upload an X-ray image (.png, .jpg, .jpeg)",
-        type=["png", "jpg", "jpeg"],
-    )
+    # ── Image input ───────────────────────────────────────────
+    tab_upload, tab_sample = st.tabs(["📤 Upload Your Own Image", "🖼️ Use a Sample Image"])
 
-    if uploaded is None:
-        st.info("👆 Upload a bone X-ray image to get started.", icon="ℹ️")
+    pil_image   = None
+    image_label = ""
+
+    with tab_upload:
+        uploaded = st.file_uploader(
+            "Upload an X-ray image (.png, .jpg, .jpeg)",
+            type=["png", "jpg", "jpeg"],
+        )
+        if uploaded is not None:
+            pil_image   = Image.open(uploaded)
+            image_label = f"Uploaded: {uploaded.name}"
+
+    with tab_sample:
+        fractured_files     = get_sample_files(FRACTURED_DIR)
+        not_fractured_files = get_sample_files(NOT_FRACTURED_DIR)
+
+        if not fractured_files and not not_fractured_files:
+            st.warning(
+                "No sample images found. Make sure the `Fractured/` and "
+                "`Not Fractured/` folders exist next to `streamlit_app.py`."
+            )
+        else:
+            col_cat, col_sel = st.columns([1, 2], gap="large")
+            with col_cat:
+                category = st.radio(
+                    "Category",
+                    ["Fractured", "Not Fractured"],
+                    help="Pick the type of sample you want to simulate.",
+                )
+            folder_files = fractured_files if category == "Fractured" else not_fractured_files
+
+            if not folder_files:
+                st.warning(f"No images found in the `{category}` folder.")
+            else:
+                with col_sel:
+                    selected_sample = st.selectbox(
+                        "Select image",
+                        folder_files,
+                        format_func=lambda p: p.name,
+                    )
+
+                if selected_sample is not None:
+                    col_thumb, col_info = st.columns([1, 2], gap="large")
+                    with col_thumb:
+                        st.image(str(selected_sample), caption=selected_sample.name, width=240)
+                    with col_info:
+                        badge_color = "#c0392b" if category == "Fractured" else "#27ae60"
+                        badge_label = category.upper()
+                        st.markdown(
+                            f"<span style='background:{badge_color};color:white;"
+                            f"padding:3px 10px;border-radius:4px;font-size:13px;"
+                            f"font-weight:600'>{badge_label}</span>",
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            f"**File:** `{selected_sample.name}`  \n"
+                            f"**Folder:** `{selected_sample.parent.name}/`"
+                        )
+                        st.markdown(
+                            "_Switch to this tab and select an image to analyze it "
+                            "automatically — no upload needed._"
+                        )
+
+                    # Only use sample if nothing was uploaded
+                    if pil_image is None:
+                        pil_image   = Image.open(str(selected_sample))
+                        image_label = f"Sample ({category}): {selected_sample.name}"
+
+    if pil_image is None:
+        st.info("👆 Upload an X-ray image or pick a sample from the **Use a Sample Image** tab.", icon="ℹ️")
+        if show_explanations:
+            show_algorithm_explanations()
         return
 
-    pil_image = Image.open(uploaded)
+    # ── Image preview + prediction ────────────────────────────
     col_img, col_result = st.columns([1, 1], gap="large")
 
     with col_img:
-        st.markdown("#### Uploaded X-ray")
+        source_icon = "🗂️" if image_label.startswith("Sample") else "📤"
+        st.markdown(f"#### {source_icon} X-ray Image")
         st.image(pil_image, use_column_width=True, clamp=True)
-        st.caption(f"Size: {pil_image.size[0]}×{pil_image.size[1]} px  |  Mode: {pil_image.mode}")
+        st.caption(
+            f"{image_label}  |  "
+            f"Size: {pil_image.size[0]}×{pil_image.size[1]} px  |  Mode: {pil_image.mode}"
+        )
 
     # ── Predict ───────────────────────────────────────────────
     with st.spinner("Running CV pipeline…"):
@@ -440,6 +844,10 @@ def main():
                 <span style='color:#3498db'>■</span> Canny — edge structure<br>
                 <span style='color:#2ecc71'>■</span> Hough — line orientation<br>
             </div>""", unsafe_allow_html=True)
+
+    # ── Algorithm explanations ────────────────────────────────
+    if show_explanations:
+        show_algorithm_explanations()
 
     # ── Download features ─────────────────────────────────────
     st.markdown("---")
