@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * {box-sizing:border-box}
+  body {margin:0;font:14px system-ui,sans-serif;color:#123b4a}
+  button,input {font:inherit}
+  button {cursor:pointer}
+  button:focus-visible,input:focus-visible {outline:3px solid #ce702d;outline-offset:4px}
+  .workspace {background:#fff;border:1px solid #d8ddd7;border-radius:20px;overflow:hidden}
+  header {display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #e5e9e5}
+  .eyebrow {font-size:10px;font-weight:700;letter-spacing:.14em;color:#596e73}
+  h2 {font-size:18px;margin:4px 0 0;letter-spacing:-.025em}
+  #play {border:1px solid #cad6d5;background:#f6f5f1;border-radius:8px;padding:8px 12px;color:#07516a;font-size:12px;font-weight:650}
+  .explorer {display:grid;grid-template-columns:minmax(0,1fr) 168px;padding:16px;gap:18px}
+  .scan {height:350px;background:#081f28;border-radius:12px;position:relative;overflow:hidden}
+  .scan img {position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:18px;will-change:opacity,transform}
+  .scan:after {content:'';position:absolute;inset:12px;border:1px solid #ffffff15;border-radius:4px;pointer-events:none}
+  .scan-label {position:absolute;top:15px;left:16px;z-index:2;font:10px ui-monospace,monospace;letter-spacing:.12em;color:#a2b7bc}
+  .scan-size {position:absolute;bottom:15px;right:16px;color:#a2b7bc;font:10px ui-monospace,monospace}
+  .navigator {display:flex;gap:8px;align-items:center;height:350px}
+  input[type=range] {writing-mode:vertical-lr;direction:ltr;width:22px;height:300px;margin:0;accent-color:#07516a;cursor:ns-resize;flex-shrink:0;touch-action:none}
+  .stages {display:flex;flex-direction:column;justify-content:space-between;height:334px;flex:1}
+  .stage {border:0;background:transparent;text-align:left;color:#526c73;padding:8px;border-radius:9px;min-height:43px;font-size:12px}
+  .stage small {display:block;font-size:9px;letter-spacing:.1em;margin-bottom:3px}
+  .stage[aria-current=true] {background:#e4efed;color:#07516a;font-weight:700}
+  .stage:hover {background:#f0f3ef}
+  footer {padding:0 20px 18px;min-height:73px}
+  #description {margin:0;font-size:12px;line-height:1.5;color:#47636b}
+  .hint {font-size:11px;color:#5e7378;margin:8px 0 0}
+  @media(max-width:520px) {
+    header{padding:14px}.explorer{grid-template-columns:minmax(0,1fr) 122px;gap:8px;padding:10px}
+    .scan,.navigator{height:320px}.scan img{padding:8px}.stage{font-size:10px;padding:5px}
+    .stages{height:304px}input[type=range]{height:270px;width:18px}.navigator{gap:3px}
+    h2{font-size:16px}footer{padding:6px 14px 16px}.scan-size{display:none}
+  }
+</style>
+</head>
+<body>
+<section class="workspace" aria-label="X-ray processing viewer">
+  <header><div><div class="eyebrow">IMAGE EXPLORER</div><h2 id="title">Original</h2></div><button id="play" type="button" aria-pressed="false">Play stages ↓</button></header>
+  <div class="explorer">
+    <div class="scan" role="img" aria-label="Original X-ray" id="scan">
+      <div class="scan-label" aria-hidden="true">CV / IMAGE VIEW</div>
+      <img id="lower" alt=""><img id="upper" alt="">
+      <div class="scan-size" aria-hidden="true">256 × 256</div>
+    </div>
+    <nav class="navigator" aria-label="Processing stages">
+      <input id="scrubber" type="range" min="0" max="5" step="0.01" value="0" aria-label="Processing stage. Down to advance, up to rewind." aria-orientation="vertical" aria-valuetext="Original">
+      <div class="stages" id="stages"></div>
+    </nav>
+  </div>
+  <footer><p id="description" aria-live="polite"></p><p class="hint">Slide down to process. Slide up to rewind.</p></footer>
+</section>
+<script>
+  const stages = __PIPELINE_DATA__;
+  const slider = document.getElementById('scrubber');
+  const lower = document.getElementById('lower');
+  const upper = document.getElementById('upper');
+  const play = document.getElementById('play');
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  let frame = 0;
+  let playing = false;
+  let selected = -1;
+  let position = 0;
+  slider.max = stages.length - 1;
+  // Preload every actual pipeline map so scrubbing never waits for a rerun.
+  stages.forEach((stage, index) => {
+    const preload = new Image();
+    preload.src = stage.src;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'stage';
+    const number = document.createElement('small');
+    number.textContent = String(index + 1).padStart(2, '0');
+    button.append(number, document.createTextNode(stage.name));
+    button.addEventListener('click', () => { stop(); animateTo(index); });
+    document.getElementById('stages').append(button);
+  });
+  const buttons = [...document.querySelectorAll('.stage')];
+  function render(value) {
+    position = Math.max(0, Math.min(stages.length - 1, value));
+    slider.value = position;
+    const visual = reducedMotion.matches ? Math.round(position) : position;
+    const index = Math.floor(visual);
+    const next = Math.min(index + 1, stages.length - 1);
+    const blend = visual - index;
+    if (lower.getAttribute('src') !== stages[index].src) lower.src = stages[index].src;
+    if (upper.getAttribute('src') !== stages[next].src) upper.src = stages[next].src;
+    lower.style.opacity = 1 - blend;
+    upper.style.opacity = blend;
+    lower.style.transform = `translateY(${-blend * 18}px)`;
+    upper.style.transform = `translateY(${(1 - blend) * 18}px)`;
+    const active = Math.round(position);
+    if (active !== selected) {
+      selected = active;
+      document.getElementById('title').textContent = stages[active].name;
+      document.getElementById('description').textContent = stages[active].description;
+      document.getElementById('scan').setAttribute('aria-label', stages[active].name + ': ' + stages[active].description);
+      slider.setAttribute('aria-valuetext', stages[active].name);
+      buttons.forEach((button, i) => button.setAttribute('aria-current', String(i === active)));
+    }
+  }
+  function stop() {
+    cancelAnimationFrame(frame);
+    playing = false;
+    play.textContent = 'Play stages ↓';
+    play.setAttribute('aria-pressed', 'false');
+  }
+  function animateTo(target, done) {
+    cancelAnimationFrame(frame);
+    const from = position;
+    const start = performance.now();
+    const duration = reducedMotion.matches ? (playing ? 1000 : 0) : (playing ? 1300 : 420);
+    function tick(now) {
+      const progress = duration ? Math.min(1, (now - start) / duration) : 1;
+      const eased = progress * progress * (3 - 2 * progress);
+      if (!reducedMotion.matches || progress === 1) render(from + (target - from) * eased);
+      if (progress < 1) frame = requestAnimationFrame(tick);
+      else if (done) done();
+    }
+    frame = requestAnimationFrame(tick);
+  }
+  slider.addEventListener('input', () => { stop(); render(Number(slider.value)); });
+  slider.addEventListener('pointerdown', stop);
+  slider.addEventListener('keydown', event => {
+    const moves = {ArrowDown:1, ArrowRight:1, ArrowUp:-1, ArrowLeft:-1};
+    if (event.key in moves || event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      stop();
+      const target = event.key === 'Home' ? 0 : event.key === 'End' ? stages.length - 1 : Math.round(position) + moves[event.key];
+      animateTo(Math.max(0, Math.min(stages.length - 1, target)));
+    }
+  });
+  play.addEventListener('click', () => {
+    if (playing) { stop(); return; }
+    cancelAnimationFrame(frame);
+    playing = true;
+    play.textContent = 'Pause';
+    play.setAttribute('aria-pressed', 'true');
+    let direction = position >= stages.length - 1 ? -1 : 1;
+    function advance() {
+      if (!playing) return;
+      if (position >= stages.length - 1) direction = -1;
+      if (position <= 0) direction = 1;
+      const target = direction > 0 ? Math.floor(position) + 1 : Math.ceil(position) - 1;
+      animateTo(target, advance);
+    }
+    advance();
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
+  render(0);
+</script>
+</body>
+</html>
