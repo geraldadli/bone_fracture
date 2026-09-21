@@ -70,7 +70,11 @@ def test_pipeline_ui():
             result = next(item.value for item in app.markdown if 'class="result"' in item.value)
             assert f"<h2>{label}</h2>" in result
             assert "60.0%" in result  # The cutoff changes the decision, not the model probability.
-    app.slider[0].set_value(50).run()
+        app.button(key="reset_threshold").click().run()
+        assert not app.exception and app.slider[0].value == 50
+        result = next(item.value for item in app.markdown if 'class="result"' in item.value)
+        assert result.index("<h2>Fractured</h2>") < result.index("Model prediction")
+        assert "60.0%" in result
     original_frame = app.get("iframe")[0].proto.srcdoc
     app.selectbox[0].select("Not Fractured").run()
     assert not app.exception

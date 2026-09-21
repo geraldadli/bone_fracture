@@ -350,44 +350,51 @@ def main():
             .st-key-analysis_workspace [data-testid="stHorizontalBlock"]>[data-testid="stColumn"] {flex:1 1 auto!important;width:100%!important}
         }
         h1,h2,h3 {color:#073d50;letter-spacing:-.035em}
-        h1 {font-size:2.65rem!important;padding:0!important}
-        h3 {font-size:1.15rem!important}
+        h1 {font-size:32px!important;padding:0!important}
+        h2,h3 {font-size:20px!important}
+        [data-testid="stWidgetLabel"] p,[data-testid="stRadio"] p,[data-testid="stButton"] p {font-size:16px}
+        [data-testid="stCaptionContainer"] p {font-size:14px}
         .brand {display:flex;align-items:center;gap:12px;margin-bottom:28px}
         .cross {background:#073d50;color:white;border-radius:12px;padding:7px 13px;font-size:27px}
-        .brand-name {font-weight:750;letter-spacing:.12em;font-size:13px}
-        .brand-sub {color:#657e84;font-size:12px;margin-top:3px}
-        .research {margin-left:auto;border:1px solid #d8ddd7;border-radius:20px;padding:6px 12px;font-size:12px;color:#647779}
+        .brand-name {font-weight:750;letter-spacing:.08em;font-size:14px}
+        .brand-sub {color:#657e84;font-size:14px;margin-top:3px}
+        .research {margin-left:auto;border:1px solid #d8ddd7;border-radius:20px;padding:6px 12px;font-size:14px;color:#647779}
         .intro {color:#647779;margin:10px 0 28px;font-size:16px}
-        .eyebrow {font-size:11px;letter-spacing:.14em;font-weight:700;color:#6a8185;margin:8px 0}
+        .eyebrow {font-size:14px;letter-spacing:.06em;font-weight:700;color:#6a8185;margin:8px 0}
         .result {border-radius:16px;background:white;border:1px solid #d8ddd7;border-top:4px solid var(--accent);padding:22px;margin-top:20px}
-        .result h2 {font-size:1.6rem;margin:8px 0 14px;padding:0;color:var(--accent)}
-        .probability {display:flex;justify-content:space-between;font-size:13px;margin-top:18px}
+        .result h2 {font-size:32px!important;line-height:1.2;margin:0 0 8px;padding:0;color:var(--accent)}
+        .result-label {font-size:14px;color:#526d74}
+        .probability {display:flex;justify-content:space-between;gap:8px;font-size:14px;margin-top:18px}
         .meter {height:7px;border-radius:8px;background:#eceee9;margin:10px 0 0;overflow:hidden}
         .meter span {height:100%;display:block;background:var(--accent);border-radius:8px}
-        .file-label {font-size:12px;color:#6a8185;overflow-wrap:anywhere;margin-top:18px}
+        .file-label {font-size:14px;color:#6a8185;overflow-wrap:anywhere;margin-top:18px}
         .empty {height:390px;display:grid;place-content:center;text-align:center;border:1px dashed #adbfbe;border-radius:20px;background:#ebe7dd;color:#647779}
         .empty strong {font-size:22px;color:#073d50;margin-bottom:10px}
         [data-testid="stFileUploader"] {border-radius:14px}
         [data-testid="stExpander"] {background:rgba(255,255,255,.55)}
         .st-key-threshold_control {background:linear-gradient(135deg,#fff 30%,#edf4f1);border-color:#cbded8!important;border-radius:16px!important;padding:18px!important;box-shadow:0 5px 20px #073d5006}
-        .threshold-heading {display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;font-weight:650}
+        .threshold-heading {display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:16px;font-weight:650}
         .threshold-heading strong {font-size:27px;letter-spacing:-.05em;color:#07516a;line-height:1.2;animation:threshold-pop .3s ease-out}
         .threshold-heading small {font-size:14px;margin-left:2px}
-        .threshold-scale {display:flex;justify-content:space-between;font-size:11px;color:#526d74;margin-top:-9px}
-        .threshold-help {font-size:12px;line-height:1.5;color:#526d74;margin:2px 0 0}
+        .threshold-scale {display:flex;justify-content:space-between;gap:12px;font-size:14px;color:#526d74;margin-top:-9px}
+        .threshold-help {font-size:14px;line-height:1.5;color:#526d74;margin:2px 0 0}
+        .st-key-reset_threshold button {min-height:32px;padding:2px 0;color:#07516a}
+        .st-key-reset_threshold button p {font-size:14px}
         .st-key-threshold_control :is([role="slider"],[data-rac]:has(>div>input[type="range"])) {width:20px!important;height:20px!important;background:#07516a!important;border:3px solid white!important;box-shadow:0 0 0 2px #07516a,0 3px 8px #07516a33;transition:box-shadow .2s ease,scale .2s ease}
         .st-key-threshold_control :is([role="slider"],[data-rac]:has(>div>input[type="range"])):is(:hover,:focus-within) {scale:1.15;animation:threshold-pulse 1.5s ease-out infinite}
-        .st-key-threshold_control [data-rac][role="group"]>[data-rac]>div:first-child {height:7px!important;border-radius:10px;overflow:hidden}
+        .st-key-threshold_control [data-rac][role="group"]>[data-rac]>div:first-child {height:9px!important;border-radius:10px;overflow:hidden}
         .st-key-threshold_control [data-rac][role="group"]>[data-rac]>div:first-child:after {content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent,#ffffff99,transparent);transform:translateX(-100%);pointer-events:none}
         .st-key-threshold_control:hover [data-rac][role="group"]>[data-rac]>div:first-child:after {animation:slider-shine 1.8s ease-in-out infinite}
-        .st-key-threshold_control [data-testid="stSliderThumbValue"] {opacity:0;transition:opacity .15s}
-        .st-key-threshold_control [data-rac]:is(:hover,:focus-within)>[data-testid="stSliderThumbValue"] {opacity:1}
+        .st-key-threshold_control [data-testid="stSliderThumbValue"] {opacity:0;background:#07516a;color:white;border-radius:8px;padding:5px 10px;box-shadow:0 4px 12px #073d5026;transition:opacity .15s;pointer-events:none}
+        .st-key-threshold_control [data-testid="stSliderThumbValue"] p {font-size:14px;color:white;font-weight:650}
+        .st-key-threshold_control [data-testid="stSliderThumbValue"]:after {content:"";position:absolute;left:50%;bottom:-5px;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid #07516a}
+        .st-key-threshold_control [data-rac]:is(:hover,:focus-within,[data-dragging])>[data-testid="stSliderThumbValue"] {opacity:1}
         .st-key-threshold_control [data-testid="stSliderTickBar"] {visibility:hidden}
         .st-key-pipeline_graph {background:#fff;border:1px solid #d6e1db!important;border-radius:20px!important;padding:24px!important;box-shadow:0 8px 30px #123b4a05}
         .graph-heading {display:flex;align-items:center;justify-content:space-between;gap:14px}
-        .graph-heading h3 {padding:0;margin:0;font-size:1.4rem!important}
+        .graph-heading h3 {padding:0;margin:0;font-size:20px!important}
         .graph-heading .eyebrow {margin:0 0 7px;color:#617c82}
-        .graph-badge {border:1px solid #c5dcd5;border-radius:8px;background:#eef5f1;padding:8px 12px;color:#376a62;font-size:12px;white-space:nowrap}
+        .graph-badge {border:1px solid #c5dcd5;border-radius:8px;background:#eef5f1;padding:8px 12px;color:#376a62;font-size:14px;white-space:nowrap}
         [data-testid="stGraphVizChart"] {padding:8px 0;width:100%}
         [data-testid="stGraphVizChart"] svg {width:100%!important;min-width:0!important;max-width:100%;height:auto!important}
         [data-testid="stGraphVizChart"] .node text {font-size:16px!important}
@@ -422,13 +429,13 @@ def main():
         @keyframes threshold-pop {from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
         @keyframes threshold-pulse {0%{box-shadow:0 0 0 2px #07516a,0 0 0 0 #07516a30}100%{box-shadow:0 0 0 2px #07516a,0 0 0 10px #07516a00}}
         @media(prefers-reduced-motion:reduce) {.threshold-heading strong,.st-key-threshold_control *,.st-key-threshold_control :after,[data-testid="stGraphVizChart"] :is(path,polygon){animation:none!important;transition:none!important}}
-        @media(max-width:640px) {.st-key-pipeline_graph{padding:16px!important}.graph-heading{align-items:flex-start;flex-direction:column}.graph-badge{font-size:11px;padding:6px 9px}}
+        @media(max-width:640px) {.st-key-pipeline_graph{padding:16px!important}.graph-heading{align-items:flex-start;flex-direction:column}.graph-badge{padding:6px 9px}}
         @media(max-width:640px) {.block-container{padding-top:4rem}h1{font-size:2rem!important}.research{display:none}}
         </style>
 <div class="brand"><div class="cross" aria-hidden="true">✚</div>
-<div><div class="brand-name">BONE FRACTURE DETECTOR</div><div class="brand-sub">Computer vision imaging workspace</div></div>
+<div><div class="brand-name">X-RAY ANALYSIS</div><div class="brand-sub">Computer vision imaging workspace</div></div>
 <span class="research">Research project</span></div>
-<h1>X-ray analysis</h1>
+<h1>Bone Fracture Detector</h1>
 <p class="intro">Review a prediction and explore the image behind it.</p>""", unsafe_allow_html=True)
 
     model = load_model()
@@ -470,6 +477,8 @@ def main():
                                   key="threshold_percent", label_visibility="collapsed") / 100
             st.markdown('<div class="threshold-scale"><span>More sensitive</span><span>More selective</span></div>', unsafe_allow_html=True)
             st.markdown('<p class="threshold-help">Predict fractured at or above this probability.</p>', unsafe_allow_html=True)
+            st.button("Reset to 50%", key="reset_threshold", type="tertiary",
+                      on_click=lambda: st.session_state.update(threshold_percent=50))
 
     if pil_image is None:
         with viewer:
@@ -493,7 +502,7 @@ def main():
         accent = "#b6491a" if pred == 0 else "#267466"
         label = "Fractured" if pred == 0 else "Not fractured"
         st.markdown(f"""<div class="result" style="--accent:{accent}">
-            <div class="eyebrow">MODEL PREDICTION</div><h2>{label}</h2>
+            <h2>{label}</h2><div class="result-label">Model prediction</div>
             <div class="probability"><span>Fracture probability</span><strong>{p_frac:.1%}</strong></div>
             <div class="meter"><span style="width:{p_frac * 100:.2f}%"></span></div>
             <div class="file-label">{escape(image_label)}</div></div>""", unsafe_allow_html=True)
