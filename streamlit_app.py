@@ -762,7 +762,7 @@ def main():
     with col_img:
         source_icon = "🗂️" if image_label.startswith("Sample") else "📤"
         st.markdown(f"#### {source_icon} X-ray Image")
-        st.image(pil_image, use_column_width=True, clamp=True)
+        st.image(pil_image, use_container_width=True, clamp=True)
         st.caption(
             f"{image_label}  |  "
             f"Size: {pil_image.size[0]}×{pil_image.size[1]} px  |  Mode: {pil_image.mode}"

@@ -1,6 +1,7 @@
 # 🦴 Bone Fracture Detector
 
-A web application that detects bone fractures from X-ray images in real time using a classical computer-vision approach not deep learning. The result is computationally light, yet accurate and easy to interpret.
+A classical computer vision web app for bone fracture detection — **no deep learning**.  
+Built with OpenCV, scikit-learn, and Streamlit.
 
 ## Live Demo
 
