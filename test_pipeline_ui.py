@@ -55,6 +55,12 @@ def test_pipeline_ui():
     app = AppTest.from_file(str(Path(__file__).with_name("streamlit_app.py"))).run(timeout=30)
     assert not app.exception, app.exception
     assert len(app.get("iframe")) == 1
+    assert app.toggle[0].label == "Animate flow" and app.toggle[0].value
+    app.toggle[0].set_value(False).run()
+    assert not app.exception
+    assert any("animation-play-state:paused!important" in item.value for item in app.markdown)
+    app.toggle[0].set_value(True).run()
+    assert any("animation-play-state:running!important" in item.value for item in app.markdown)
     assert app.slider[0].label == "Fracture threshold" and app.slider[0].value == 50
     assert "Analysis settings" not in [expander.label for expander in app.expander]
     with patch("sklearn.ensemble.RandomForestClassifier.predict_proba", return_value=np.array([[0.6, 0.4]])):

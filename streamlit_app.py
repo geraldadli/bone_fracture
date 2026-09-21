@@ -280,55 +280,60 @@ def get_sample_files(folder: Path) -> list[Path]:
 def show_pipeline_diagram():
     with st.container(key="pipeline_graph", border=True):
         st.markdown('<div class="graph-heading"><div><div class="eyebrow">THE PROCESS</div><h3>From X-ray to prediction</h3></div><span class="graph-badge">42 image features</span></div>', unsafe_allow_html=True)
-        st.markdown('<p class="diagram-hint">Swipe across to explore the full diagram.</p>', unsafe_allow_html=True)
+        animate = st.toggle("Animate flow", value=True, key="animate_pipeline")
+        play_state = "running" if animate else "paused"
+        st.markdown(f'<style>.st-key-pipeline_graph .node path,.st-key-pipeline_graph .node polygon,.st-key-pipeline_graph .edge path,.st-key-pipeline_graph .edge polygon {{animation-play-state:{play_state}!important}}</style>', unsafe_allow_html=True)
         st.graphviz_chart("""digraph {
             graph [rankdir=TB bgcolor="transparent" pad="0.2" nodesep="0.38" ranksep="0.65"
                    splines=ortho compound=true fontname="Arial"]
             node [shape=box style="rounded,filled" fillcolor="#ffffff" color="#c9dcd9"
-                  penwidth=1.3 fontname="Arial" fontsize=14 fontcolor="#123b4a"
+                  penwidth=1.3 fontname="Arial" fontsize=16 fontcolor="#123b4a"
                   margin="0.23,0.18" width=1.65 height=0.8]
             edge [color="#8ba8ad" penwidth=1.5 arrowsize=0.65]
             subgraph cluster_prepare {
                 label="01   PREPARE THE IMAGE" labelloc=t labeljust=l
-                fontcolor="#59757c" fontsize=11 style="rounded,filled" color="#e6ece7"
+                fontcolor="#59757c" fontsize=12 style="rounded,filled" color="#e6ece7"
                 fillcolor="#f5f6f2" margin=22
                 {rank=same; input; clahe; bilateral; gaussian}
-                input [label="X-ray\\nGrayscale" fillcolor="#e7efed"]
-                clahe [label="CLAHE\\nContrast"]
-                bilateral [label="Bilateral\\nDenoise"]
-                gaussian [label="Gaussian\\nSmooth"]
-                input -> clahe -> bilateral -> gaussian
+                input [class="flow-step-0" label="X-ray\\nGrayscale" fillcolor="#e7efed"]
+                clahe [class="flow-step-1" label="CLAHE\\nContrast"]
+                bilateral [class="flow-step-2" label="Bilateral\\nDenoise"]
+                gaussian [class="flow-step-3" label="Gaussian\\nSmooth"]
+                input -> clahe [class="flow-step-1"]
+                clahe -> bilateral [class="flow-step-2"]
+                bilateral -> gaussian [class="flow-step-3"]
             }
             subgraph cluster_extract {
                 label="02   EXTRACT IMAGE FEATURES" labelloc=t labeljust=l
-                fontcolor="#59757c" fontsize=11 style="rounded,filled" color="#e6ece7"
+                fontcolor="#59757c" fontsize=12 style="rounded,filled" color="#e6ece7"
                 fillcolor="#f5f6f2" margin=22
                 {rank=same; ws; sobel; canny; hough}
-                ws [label="Watershed\\n10 region features" color="#cb997b"]
-                sobel [label="Sobel\\n14 gradient features" color="#92b0b8"]
-                canny [label="Canny\\n9 edge features" color="#92b0b8"]
-                hough [label="Hough\\n9 line features" color="#92b0b8"]
+                ws [class="flow-step-7" label="Watershed\\n10 region features" color="#cb997b"]
+                sobel [class="flow-step-4" label="Sobel\\n14 gradient features" color="#92b0b8"]
+                canny [class="flow-step-5" label="Canny\\n9 edge features" color="#92b0b8"]
+                hough [class="flow-step-6" label="Hough\\n9 line features" color="#92b0b8"]
                 ws -> sobel -> canny [style=invis]
-                canny -> hough
+                canny -> hough [class="flow-step-6"]
             }
             subgraph cluster_predict {
                 label="03   CLASSIFY" labelloc=t labeljust=l
-                fontcolor="#59757c" fontsize=11 style="rounded,filled" color="#e6ece7"
+                fontcolor="#59757c" fontsize=12 style="rounded,filled" color="#e6ece7"
                 fillcolor="#f5f6f2" margin=22
                 {rank=same; features; model; result}
-                features [label="42 features\\nCombined vector" fillcolor="#e1efeb" color="#adcbc4"]
-                model [label="Random Forest\\nClassifier" fillcolor="#07516a" color="#07516a" fontcolor=white]
-                result [label="Prediction\\nFractured / not fractured" fillcolor="#e1efeb" color="#adcbc4"]
-                features -> model -> result [color="#07516a"]
+                features [class="flow-step-8" label="42 features\\nCombined vector" fillcolor="#e1efeb" color="#adcbc4"]
+                model [class="flow-step-9" label="Random Forest\\nClassifier" fillcolor="#07516a" color="#07516a" fontcolor=white]
+                result [class="flow-step-10" label="Prediction\\nFractured / not fractured" fillcolor="#e1efeb" color="#adcbc4"]
+                features -> model [class="flow-step-9" color="#07516a"]
+                model -> result [class="flow-step-10" color="#07516a"]
             }
-            clahe -> ws
-            bilateral -> ws
-            gaussian -> sobel
-            gaussian -> canny
-            ws -> features
-            sobel -> features
-            canny -> features
-            hough -> features
+            clahe -> ws [class="flow-step-7"]
+            bilateral -> ws [class="flow-step-7"]
+            gaussian -> sobel [class="flow-step-4"]
+            gaussian -> canny [class="flow-step-5"]
+            ws -> features [class="flow-step-8"]
+            sobel -> features [class="flow-step-8"]
+            canny -> features [class="flow-step-8"]
+            hough -> features [class="flow-step-8"]
         }""", use_container_width=True)
 
 
@@ -374,19 +379,41 @@ def main():
         .graph-heading h3 {padding:0;margin:0;font-size:1.4rem!important}
         .graph-heading .eyebrow {margin:0 0 7px;color:#617c82}
         .graph-badge {border:1px solid #c5dcd5;border-radius:8px;background:#eef5f1;padding:8px 12px;color:#376a62;font-size:12px;white-space:nowrap}
-        [data-testid="stGraphVizChart"] {overflow-x:auto;padding:8px 0;scrollbar-color:#adc6c1 #f4f6f2;scrollbar-width:thin}
-        [data-testid="stGraphVizChart"] svg {min-width:740px;height:auto!important}
+        [data-testid="stGraphVizChart"] {padding:8px 0;width:100%}
+        [data-testid="stGraphVizChart"] svg {width:100%!important;min-width:0!important;max-width:100%;height:auto!important}
+        [data-testid="stGraphVizChart"] .node text {font-size:16px!important}
+        [data-testid="stGraphVizChart"] .cluster text {font-size:12px!important}
         [data-testid="stGraphVizChart"] .node {transition:filter .2s ease}
         [data-testid="stGraphVizChart"] .node:hover {filter:drop-shadow(0 3px 4px #07516a26)}
-        [data-testid="stGraphVizChart"]:hover .edge path {stroke-dasharray:7 5;animation:pipeline-flow 1.4s linear infinite}
+        .st-key-pipeline_graph .flow-step-0 {--flow-delay:0s;--node-fill:#e7efed}
+        .st-key-pipeline_graph .flow-step-1 {--flow-delay:2s}
+        .st-key-pipeline_graph .flow-step-2 {--flow-delay:4s}
+        .st-key-pipeline_graph .flow-step-3 {--flow-delay:6s}
+        .st-key-pipeline_graph .flow-step-4 {--flow-delay:8s}
+        .st-key-pipeline_graph .flow-step-5 {--flow-delay:10s}
+        .st-key-pipeline_graph .flow-step-6 {--flow-delay:12s}
+        .st-key-pipeline_graph .flow-step-7 {--flow-delay:14s;--node-stroke:#cb997b}
+        .st-key-pipeline_graph .flow-step-8 {--flow-delay:16s;--node-fill:#e1efeb}
+        .st-key-pipeline_graph .flow-step-9 {--flow-delay:18s;--node-fill:#07516a;--highlight-fill:#087c87}
+        .st-key-pipeline_graph .flow-step-10 {--flow-delay:20s;--node-fill:#e1efeb}
+        .st-key-pipeline_graph .node :is(path,polygon) {animation:flow-node 22s ease-in-out var(--flow-delay) infinite}
+        .st-key-pipeline_graph .edge path {animation:flow-edge 22s linear calc(var(--flow-delay) - .4s) infinite}
+        .st-key-pipeline_graph .edge polygon {animation:flow-arrow 22s ease-in-out calc(var(--flow-delay) - .4s) infinite}
+        @keyframes flow-node {
+            0%,9.09%,100% {fill:var(--node-fill,#fff);stroke:var(--node-stroke,#c9dcd9);stroke-width:1.3;filter:none}
+            1.5%,7% {fill:var(--highlight-fill,#d2f0e5);stroke:#0b9980;stroke-width:3;filter:drop-shadow(0 0 6px #0b99804d)}
+        }
+        @keyframes flow-edge {
+            0%,9.09%,100% {stroke:#8ba8ad;stroke-width:1.5;stroke-dasharray:7 0;stroke-dashoffset:0}
+            1.5%,7% {stroke:#0b9980;stroke-width:3;stroke-dasharray:7 5}
+            8% {stroke-dashoffset:-48}
+        }
+        @keyframes flow-arrow {0%,9.09%,100%{fill:#8ba8ad;stroke:#8ba8ad}1.5%,7%{fill:#0b9980;stroke:#0b9980}}
         @keyframes slider-shine {to{transform:translateX(100%)}}
-        @keyframes pipeline-flow {to{stroke-dashoffset:-24}}
         @keyframes threshold-pop {from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
         @keyframes threshold-pulse {0%{box-shadow:0 0 0 2px #07516a,0 0 0 0 #07516a30}100%{box-shadow:0 0 0 2px #07516a,0 0 0 10px #07516a00}}
-        @media(prefers-reduced-motion:reduce) {.threshold-heading strong,.st-key-threshold_control *,.st-key-threshold_control :after,[data-testid="stGraphVizChart"] .edge path{animation:none!important;transition:none!important}}
+        @media(prefers-reduced-motion:reduce) {.threshold-heading strong,.st-key-threshold_control *,.st-key-threshold_control :after,[data-testid="stGraphVizChart"] :is(path,polygon){animation:none!important;transition:none!important}}
         @media(max-width:640px) {.st-key-pipeline_graph{padding:16px!important}.graph-heading{align-items:flex-start;flex-direction:column}.graph-badge{font-size:11px;padding:6px 9px}}
-        .diagram-hint {display:none}
-        @media(max-width:850px) {.diagram-hint{display:block;font-size:12px;color:#5e7378}}
         @media(max-width:640px) {.block-container{padding-top:4rem}h1{font-size:2rem!important}.research{display:none}}
         </style>
 <div class="brand"><div class="cross" aria-hidden="true">✚</div>
