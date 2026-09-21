@@ -278,31 +278,58 @@ def get_sample_files(folder: Path) -> list[Path]:
 
 
 def show_pipeline_diagram():
-    st.markdown("### How the image is processed")
-    st.markdown('<p class="diagram-hint">Swipe across to follow the pipeline.</p>', unsafe_allow_html=True)
-    st.graphviz_chart("""digraph {
-        graph [rankdir=LR bgcolor="transparent" pad="0.15" nodesep="0.22" ranksep="0.35"]
-        node [shape=box style="rounded,filled" fillcolor="#ebe7dd" color="#d4dcd9"
-              fontname="Arial" fontsize=12 fontcolor="#123b4a" margin="0.16,0.12"]
-        edge [color="#7e979c" arrowsize=0.65]
-        input [label="X-ray\\nGrayscale"]
-        clahe [label="CLAHE\\nContrast"]
-        bilateral [label="Bilateral\\nDenoise"]
-        gaussian [label="Gaussian\\nSmooth"]
-        sobel [label="Sobel\\nGradients"]
-        canny [label="Canny\\nEdges"]
-        hough [label="Hough\\nLines"]
-        ws [label="Watershed\\nRegions"]
-        features [label="42 features" fillcolor="#dbeae8"]
-        model [label="Random Forest\\nPrediction" fillcolor="#07516a" fontcolor="white"]
-        input -> clahe -> bilateral -> gaussian
-        gaussian -> sobel -> features
-        gaussian -> canny -> hough -> features
-        canny -> features
-        clahe -> ws
-        bilateral -> ws -> features
-        features -> model
-    }""", use_container_width=True)
+    with st.container(key="pipeline_graph", border=True):
+        st.markdown('<div class="graph-heading"><div><div class="eyebrow">THE PROCESS</div><h3>From X-ray to prediction</h3></div><span class="graph-badge">42 image features</span></div>', unsafe_allow_html=True)
+        st.markdown('<p class="diagram-hint">Swipe across to explore the full diagram.</p>', unsafe_allow_html=True)
+        st.graphviz_chart("""digraph {
+            graph [rankdir=TB bgcolor="transparent" pad="0.2" nodesep="0.38" ranksep="0.65"
+                   splines=ortho compound=true fontname="Arial"]
+            node [shape=box style="rounded,filled" fillcolor="#ffffff" color="#c9dcd9"
+                  penwidth=1.3 fontname="Arial" fontsize=14 fontcolor="#123b4a"
+                  margin="0.23,0.18" width=1.65 height=0.8]
+            edge [color="#8ba8ad" penwidth=1.5 arrowsize=0.65]
+            subgraph cluster_prepare {
+                label="01   PREPARE THE IMAGE" labelloc=t labeljust=l
+                fontcolor="#59757c" fontsize=11 style="rounded,filled" color="#e6ece7"
+                fillcolor="#f5f6f2" margin=22
+                {rank=same; input; clahe; bilateral; gaussian}
+                input [label="X-ray\\nGrayscale" fillcolor="#e7efed"]
+                clahe [label="CLAHE\\nContrast"]
+                bilateral [label="Bilateral\\nDenoise"]
+                gaussian [label="Gaussian\\nSmooth"]
+                input -> clahe -> bilateral -> gaussian
+            }
+            subgraph cluster_extract {
+                label="02   EXTRACT IMAGE FEATURES" labelloc=t labeljust=l
+                fontcolor="#59757c" fontsize=11 style="rounded,filled" color="#e6ece7"
+                fillcolor="#f5f6f2" margin=22
+                {rank=same; ws; sobel; canny; hough}
+                ws [label="Watershed\\n10 region features" color="#cb997b"]
+                sobel [label="Sobel\\n14 gradient features" color="#92b0b8"]
+                canny [label="Canny\\n9 edge features" color="#92b0b8"]
+                hough [label="Hough\\n9 line features" color="#92b0b8"]
+                ws -> sobel -> canny [style=invis]
+                canny -> hough
+            }
+            subgraph cluster_predict {
+                label="03   CLASSIFY" labelloc=t labeljust=l
+                fontcolor="#59757c" fontsize=11 style="rounded,filled" color="#e6ece7"
+                fillcolor="#f5f6f2" margin=22
+                {rank=same; features; model; result}
+                features [label="42 features\\nCombined vector" fillcolor="#e1efeb" color="#adcbc4"]
+                model [label="Random Forest\\nClassifier" fillcolor="#07516a" color="#07516a" fontcolor=white]
+                result [label="Prediction\\nFractured / not fractured" fillcolor="#e1efeb" color="#adcbc4"]
+                features -> model -> result [color="#07516a"]
+            }
+            clahe -> ws
+            bilateral -> ws
+            gaussian -> sobel
+            gaussian -> canny
+            ws -> features
+            sobel -> features
+            canny -> features
+            hough -> features
+        }""", use_container_width=True)
 
 
 def main():
@@ -328,8 +355,36 @@ def main():
         .empty strong {font-size:22px;color:#073d50;margin-bottom:10px}
         [data-testid="stFileUploader"] {border-radius:14px}
         [data-testid="stExpander"] {background:rgba(255,255,255,.55)}
-        [data-testid="stGraphVizChart"] {overflow-x:auto}
-        [data-testid="stGraphVizChart"] svg {min-width:820px;height:auto!important}
+        .st-key-threshold_control {background:linear-gradient(135deg,#fff 30%,#edf4f1);border-color:#cbded8!important;border-radius:16px!important;padding:18px!important;box-shadow:0 5px 20px #073d5006}
+        .threshold-heading {display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;font-weight:650}
+        .threshold-heading strong {font-size:27px;letter-spacing:-.05em;color:#07516a;line-height:1.2;animation:threshold-pop .3s ease-out}
+        .threshold-heading small {font-size:14px;margin-left:2px}
+        .threshold-scale {display:flex;justify-content:space-between;font-size:11px;color:#526d74;margin-top:-9px}
+        .threshold-help {font-size:12px;line-height:1.5;color:#526d74;margin:2px 0 0}
+        .st-key-threshold_control :is([role="slider"],[data-rac]:has(>div>input[type="range"])) {width:20px!important;height:20px!important;background:#07516a!important;border:3px solid white!important;box-shadow:0 0 0 2px #07516a,0 3px 8px #07516a33;transition:box-shadow .2s ease,scale .2s ease}
+        .st-key-threshold_control :is([role="slider"],[data-rac]:has(>div>input[type="range"])):is(:hover,:focus-within) {scale:1.15;animation:threshold-pulse 1.5s ease-out infinite}
+        .st-key-threshold_control [data-rac][role="group"]>[data-rac]>div:first-child {height:7px!important;border-radius:10px;overflow:hidden}
+        .st-key-threshold_control [data-rac][role="group"]>[data-rac]>div:first-child:after {content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent,#ffffff99,transparent);transform:translateX(-100%);pointer-events:none}
+        .st-key-threshold_control:hover [data-rac][role="group"]>[data-rac]>div:first-child:after {animation:slider-shine 1.8s ease-in-out infinite}
+        .st-key-threshold_control [data-testid="stSliderThumbValue"] {opacity:0;transition:opacity .15s}
+        .st-key-threshold_control [data-rac]:is(:hover,:focus-within)>[data-testid="stSliderThumbValue"] {opacity:1}
+        .st-key-threshold_control [data-testid="stSliderTickBar"] {visibility:hidden}
+        .st-key-pipeline_graph {background:#fff;border:1px solid #d6e1db!important;border-radius:20px!important;padding:24px!important;box-shadow:0 8px 30px #123b4a05}
+        .graph-heading {display:flex;align-items:center;justify-content:space-between;gap:14px}
+        .graph-heading h3 {padding:0;margin:0;font-size:1.4rem!important}
+        .graph-heading .eyebrow {margin:0 0 7px;color:#617c82}
+        .graph-badge {border:1px solid #c5dcd5;border-radius:8px;background:#eef5f1;padding:8px 12px;color:#376a62;font-size:12px;white-space:nowrap}
+        [data-testid="stGraphVizChart"] {overflow-x:auto;padding:8px 0;scrollbar-color:#adc6c1 #f4f6f2;scrollbar-width:thin}
+        [data-testid="stGraphVizChart"] svg {min-width:740px;height:auto!important}
+        [data-testid="stGraphVizChart"] .node {transition:filter .2s ease}
+        [data-testid="stGraphVizChart"] .node:hover {filter:drop-shadow(0 3px 4px #07516a26)}
+        [data-testid="stGraphVizChart"]:hover .edge path {stroke-dasharray:7 5;animation:pipeline-flow 1.4s linear infinite}
+        @keyframes slider-shine {to{transform:translateX(100%)}}
+        @keyframes pipeline-flow {to{stroke-dashoffset:-24}}
+        @keyframes threshold-pop {from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes threshold-pulse {0%{box-shadow:0 0 0 2px #07516a,0 0 0 0 #07516a30}100%{box-shadow:0 0 0 2px #07516a,0 0 0 10px #07516a00}}
+        @media(prefers-reduced-motion:reduce) {.threshold-heading strong,.st-key-threshold_control *,.st-key-threshold_control :after,[data-testid="stGraphVizChart"] .edge path{animation:none!important;transition:none!important}}
+        @media(max-width:640px) {.st-key-pipeline_graph{padding:16px!important}.graph-heading{align-items:flex-start;flex-direction:column}.graph-badge{font-size:11px;padding:6px 9px}}
         .diagram-hint {display:none}
         @media(max-width:850px) {.diagram-hint{display:block;font-size:12px;color:#5e7378}}
         @media(max-width:640px) {.block-container{padding-top:4rem}h1{font-size:2rem!important}.research{display:none}}
@@ -371,9 +426,13 @@ def main():
                     st.error("This sample could not be opened. Choose another image.")
             else:
                 st.info("No samples available in this group. Upload an X-ray to begin.")
-        with st.expander("Analysis settings"):
-            threshold = st.slider("Fracture threshold", 0.10, 0.90, 0.50, 0.05,
-                                  help="Predict fractured when the fracture probability meets or exceeds this value.")
+        with st.container(key="threshold_control", border=True):
+            cutoff = st.session_state.get("threshold_percent", 50)
+            st.markdown(f'<div class="threshold-heading"><span>Fracture threshold</span><strong>{cutoff}<small>%</small></strong></div>', unsafe_allow_html=True)
+            threshold = st.slider("Fracture threshold", 10, 90, 50, 5, format="%d%%",
+                                  key="threshold_percent", label_visibility="collapsed") / 100
+            st.markdown('<div class="threshold-scale"><span>More sensitive</span><span>More selective</span></div>', unsafe_allow_html=True)
+            st.markdown('<p class="threshold-help">Predict fractured at or above this probability.</p>', unsafe_allow_html=True)
 
     if pil_image is None:
         with viewer:

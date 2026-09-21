@@ -55,6 +55,16 @@ def test_pipeline_ui():
     app = AppTest.from_file(str(Path(__file__).with_name("streamlit_app.py"))).run(timeout=30)
     assert not app.exception, app.exception
     assert len(app.get("iframe")) == 1
+    assert app.slider[0].label == "Fracture threshold" and app.slider[0].value == 50
+    assert "Analysis settings" not in [expander.label for expander in app.expander]
+    with patch("sklearn.ensemble.RandomForestClassifier.predict_proba", return_value=np.array([[0.6, 0.4]])):
+        for threshold, label in [(55, "Fractured"), (60, "Fractured"), (65, "Not fractured")]:
+            app.slider[0].set_value(threshold).run()
+            assert not app.exception
+            result = next(item.value for item in app.markdown if 'class="result"' in item.value)
+            assert f"<h2>{label}</h2>" in result
+            assert "60.0%" in result  # The cutoff changes the decision, not the model probability.
+    app.slider[0].set_value(50).run()
     original_frame = app.get("iframe")[0].proto.srcdoc
     app.selectbox[0].select("Not Fractured").run()
     assert not app.exception
