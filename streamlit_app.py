@@ -127,7 +127,7 @@ def extract_canny_features(blurred, low=CANNY_LOW, high=CANNY_HIGH):
                 try:
                     defects = cv2.convexityDefects(cnt, hull)
                     if defects is not None:
-                        defect_depths.extend((defects[:, 0, 3] / 256.0).tolist())
+                        defect_depths.extend((defects.reshape(-1, 4)[:, 3] / 256.0).tolist())
                 except cv2.error:
                     pass
     edge_coords = np.argwhere(edges > 0)
