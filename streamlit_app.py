@@ -339,7 +339,16 @@ def show_pipeline_diagram():
 
 def main():
     st.markdown("""<style>
-        .block-container {max-width:1240px;padding-top:4.5rem;padding-bottom:2rem}
+        .block-container {max-width:none;width:100%;padding:4rem clamp(16px,2vw,36px) 2rem}
+        .st-key-analysis_workspace [data-testid="stHorizontalBlock"] {gap:24px}
+        .st-key-analysis_workspace [data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:first-child {flex:0 0 clamp(260px,23vw,340px);min-width:0}
+        .st-key-analysis_workspace [data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:last-child {flex:1 1 0;min-width:0}
+        .st-key-analysis_workspace iframe {height:clamp(560px,75vh,850px)!important;width:100%}
+        .st-key-analysis_workspace [data-testid="stElementContainer"]:has(>iframe) {height:auto}
+        @media(max-width:900px) {
+            .st-key-analysis_workspace [data-testid="stHorizontalBlock"] {flex-direction:column}
+            .st-key-analysis_workspace [data-testid="stHorizontalBlock"]>[data-testid="stColumn"] {flex:1 1 auto!important;width:100%!important}
+        }
         h1,h2,h3 {color:#073d50;letter-spacing:-.035em}
         h1 {font-size:2.65rem!important;padding:0!important}
         h3 {font-size:1.15rem!important}
@@ -423,7 +432,8 @@ def main():
 <p class="intro">Review a prediction and explore the image behind it.</p>""", unsafe_allow_html=True)
 
     model = load_model()
-    controls, viewer = st.columns([1, 2.15], gap="large")
+    with st.container(key="analysis_workspace"):
+        controls, viewer = st.columns([1, 3], gap="medium")
     pil_image = None
     image_label = ""
     with controls:
@@ -496,7 +506,7 @@ def main():
     with viewer:
         st.markdown("### 02 / Explore the image")
         template = Path(__file__).with_name("pipeline_viewer.html").read_text(encoding="utf-8")
-        components.html(template.replace("__PIPELINE_DATA__", json.dumps(maps)), height=525, scrolling=False)
+        components.html(template.replace("__PIPELINE_DATA__", json.dumps(maps)), height=700, scrolling=False)
     show_pipeline_diagram()
 
 
