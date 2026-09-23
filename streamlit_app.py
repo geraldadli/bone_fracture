@@ -337,6 +337,11 @@ def show_pipeline_diagram():
         }""", use_container_width=True)
 
 
+@st.dialog("App trailer", width="large")
+def show_trailer():
+    st.video(str(Path(__file__).parent / "assets" / "app-trailer.mp4"), autoplay=True)
+
+
 def main():
     st.markdown("""<style>
         .block-container {max-width:none;width:100%;padding:4rem clamp(16px,2vw,36px) 2rem}
@@ -354,6 +359,9 @@ def main():
         h2,h3 {font-size:20px!important}
         [data-testid="stWidgetLabel"] p,[data-testid="stRadio"] p,[data-testid="stButton"] p {font-size:16px}
         [data-testid="stCaptionContainer"] p {font-size:14px}
+        [data-testid="stVideo"] {border-radius:14px}
+        [data-testid="stDialog"] video {max-height:calc(100dvh - 180px);object-fit:contain;background:#081c24}
+        .st-key-watch_trailer {margin-bottom:16px}
         .brand {display:flex;align-items:center;gap:12px;margin-bottom:28px}
         .cross {background:#073d50;color:white;border-radius:12px;padding:7px 13px;font-size:27px}
         .brand-name {font-weight:750;letter-spacing:.08em;font-size:14px}
@@ -437,6 +445,9 @@ def main():
 <span class="research">Research project</span></div>
 <h1>Bone Fracture Detector</h1>
 <p class="intro">Review a prediction and explore the image behind it.</p>""", unsafe_allow_html=True)
+
+    if st.button("Watch trailer · 1 min", icon=":material/play_circle:", key="watch_trailer"):
+        show_trailer()
 
     model = load_model()
     with st.container(key="analysis_workspace"):

@@ -55,6 +55,11 @@ def test_pipeline_ui():
     app = AppTest.from_file(str(Path(__file__).with_name("streamlit_app.py"))).run(timeout=30)
     assert not app.exception, app.exception
     assert len(app.get("iframe")) == 1
+    assert len(app.get("video")) == 0
+    app.button(key="watch_trailer").click().run()
+    assert not app.exception and len(app.get("video")) == 1
+    assert app.get("video")[0].proto.autoplay
+    app.run()  # A normal rerun returns to the analysis workspace.
     assert app.toggle[0].label == "Animate flow" and app.toggle[0].value
     app.toggle[0].set_value(False).run()
     assert not app.exception
