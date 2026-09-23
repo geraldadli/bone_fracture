@@ -337,19 +337,20 @@ def show_pipeline_diagram():
         }""", use_container_width=True)
 
 
-@st.dialog("App trailer", width="large")
 def show_trailer():
-    # Browsers only autoplay without a click when the video starts muted.
-    st.video(str(Path(__file__).parent / "assets" / "app-trailer.mp4"), autoplay=True, muted=True)
-    # st.video can drop its autoplay flag while the rest of the page is still loading,
-    # so also start the trailer from here once its player appears.
-    st.html("""<p class="trailer-note">Playing muted. Use the speaker icon in the player to turn on sound.</p>
+    with st.container(key="trailer"):
+        # Browsers only autoplay without a click when the video starts muted.
+        st.video(str(Path(__file__).parent / "assets" / "app-trailer.mp4"), autoplay=True, muted=True)
+        # st.video can drop its autoplay flag while the rest of the page is still loading,
+        # so also start the trailer from here once its player appears. A trailer that has
+        # already played is left alone, so a pause survives later reruns.
+        st.html("""<p class="trailer-note">Playing muted. Use the speaker icon in the player to turn on sound.</p>
 <script>(() => {
     const deadline = Date.now() + 10000;
     const start = () => {
-        const video = document.querySelector('[data-testid="stDialog"] video');
-        if (video) { video.playsInline = true; video.play().catch(() => {}); }
-        else if (Date.now() < deadline) setTimeout(start, 200);
+        const video = document.querySelector('.st-key-trailer video');
+        if (!video) { if (Date.now() < deadline) setTimeout(start, 200); return; }
+        if (!video.played.length) { video.playsInline = true; video.play().catch(() => {}); }
     };
     start();
 })();</script>""", unsafe_allow_javascript=True)
@@ -373,7 +374,8 @@ def main():
         [data-testid="stWidgetLabel"] p,[data-testid="stRadio"] p,[data-testid="stButton"] p {font-size:16px}
         [data-testid="stCaptionContainer"] p {font-size:14px}
         [data-testid="stVideo"] {border-radius:14px}
-        [data-testid="stDialog"] video {max-height:calc(100dvh - 180px);object-fit:contain;background:#081c24}
+        .st-key-trailer {width:min(100%,880px,calc(60dvh * 16 / 9));margin-bottom:24px}
+        .st-key-trailer video {aspect-ratio:16/9;background:#081c24}
         .trailer-note {font-size:14px;color:#526d74;margin:0}
         .brand {display:flex;align-items:center;gap:12px;margin-bottom:28px}
         .cross {background:#073d50;color:white;border-radius:12px;padding:7px 13px;font-size:27px}
@@ -459,10 +461,7 @@ def main():
 <h1>Bone Fracture Detector</h1>
 <p class="intro">Review a prediction and explore the image behind it.</p>""", unsafe_allow_html=True)
 
-    # Open the trailer once per visit; later reruns keep it closed.
-    if "trailer_shown" not in st.session_state:
-        st.session_state.trailer_shown = True
-        show_trailer()
+    show_trailer()
 
     model = load_model()
     with st.container(key="analysis_workspace"):
