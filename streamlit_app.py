@@ -374,7 +374,7 @@ def main():
         [data-testid="stWidgetLabel"] p,[data-testid="stRadio"] p,[data-testid="stButton"] p {font-size:16px}
         [data-testid="stCaptionContainer"] p {font-size:14px}
         [data-testid="stVideo"] {border-radius:14px}
-        .st-key-trailer {width:min(100%,880px,calc(60dvh * 16 / 9));margin-bottom:24px}
+        .st-key-trailer {width:min(100%,880px,calc(60dvh * 16 / 9));margin:0 auto 24px}
         .st-key-trailer video {aspect-ratio:16/9;background:#081c24}
         .trailer-note {font-size:14px;color:#526d74;margin:0}
         .brand {display:flex;align-items:center;gap:12px;margin-bottom:28px}
