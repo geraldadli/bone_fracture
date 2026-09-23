@@ -339,8 +339,11 @@ def show_pipeline_diagram():
 
 def show_trailer():
     with st.container(key="trailer"):
+        st.markdown("### Project trailer")
         # Browsers only autoplay without a click when the video starts muted.
-        st.video(str(Path(__file__).parent / "assets" / "app-trailer.mp4"), autoplay=True, muted=True)
+        st.video(str(Path(__file__).parent / "assets" / "app-trailer.mp4"), autoplay=True, muted=True,
+                 loop=st.session_state.get("loop_trailer", False))
+        st.toggle("Loop video", key="loop_trailer")
         # st.video can drop its autoplay flag while the rest of the page is still loading,
         # so also start the trailer from here once its player appears. A trailer that has
         # already played is left alone, so a pause survives later reruns.
@@ -359,12 +362,15 @@ def show_trailer():
 def main():
     st.markdown("""<style>
         .block-container {max-width:none;width:100%;padding:4rem clamp(16px,2vw,36px) 2rem}
-        .st-key-analysis_workspace [data-testid="stHorizontalBlock"] {gap:24px}
-        .st-key-analysis_workspace [data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:first-child {flex:0 0 clamp(260px,23vw,340px);min-width:0}
-        .st-key-analysis_workspace [data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:last-child {flex:1 1 0;min-width:0}
-        .st-key-analysis_workspace iframe {height:clamp(560px,75vh,850px)!important;width:100%}
+        .st-key-analysis_workspace {margin-bottom:28px}
+        .st-key-analysis_workspace [data-testid="stColumn"] {min-width:0}
+        .st-key-analysis_workspace iframe {height:620px!important;width:100%}
         .st-key-analysis_workspace [data-testid="stElementContainer"]:has(>iframe) {height:auto}
-        @media(max-width:900px) {
+        .st-key-configuration {background:#fff;border:1px solid #d8ddd7;border-radius:20px;padding:20px}
+        @media(min-width:1101px) {
+            .st-key-analysis_workspace [data-testid="stColumn"]:has(.st-key-trailer) {position:sticky;top:4.5rem;align-self:flex-start}
+        }
+        @media(max-width:1100px) {
             .st-key-analysis_workspace [data-testid="stHorizontalBlock"] {flex-direction:column}
             .st-key-analysis_workspace [data-testid="stHorizontalBlock"]>[data-testid="stColumn"] {flex:1 1 auto!important;width:100%!important}
         }
@@ -374,7 +380,7 @@ def main():
         [data-testid="stWidgetLabel"] p,[data-testid="stRadio"] p,[data-testid="stButton"] p {font-size:16px}
         [data-testid="stCaptionContainer"] p {font-size:14px}
         [data-testid="stVideo"] {border-radius:14px}
-        .st-key-trailer {width:min(100%,880px,calc(60dvh * 16 / 9));margin:0 auto 24px}
+        .st-key-trailer {width:100%;padding:20px;background:#fff;border:1px solid #d8ddd7;border-radius:20px}
         .st-key-trailer video {aspect-ratio:16/9;background:#081c24}
         .trailer-note {font-size:14px;color:#526d74;margin:0}
         .brand {display:flex;align-items:center;gap:12px;margin-bottom:28px}
@@ -461,15 +467,20 @@ def main():
 <h1>Bone Fracture Detector</h1>
 <p class="intro">Review a prediction and explore the image behind it.</p>""", unsafe_allow_html=True)
 
-    show_trailer()
-
     model = load_model()
     with st.container(key="analysis_workspace"):
-        controls, viewer = st.columns([1, 3], gap="medium")
+        demo, analysis = st.columns([1, 1.15], gap="large")
+        with demo:
+            show_trailer()
+        with analysis:
+            controls = st.container(key="configuration")
+            viewer = st.container(key="image_explorer")
     pil_image = None
     image_label = ""
     with controls:
         st.markdown("### 01 / Select an X-ray")
+        selection, settings = st.columns(2, gap="medium")
+    with selection:
         source = st.radio("Image source", ["Sample", "Upload"], horizontal=True, label_visibility="collapsed")
         if source == "Upload":
             uploaded = st.file_uploader("X-ray image", type=["png", "jpg", "jpeg"], label_visibility="collapsed")
@@ -495,6 +506,7 @@ def main():
                     st.error("This sample could not be opened. Choose another image.")
             else:
                 st.info("No samples available in this group. Upload an X-ray to begin.")
+    with settings:
         with st.container(key="threshold_control", border=True):
             cutoff = st.session_state.get("threshold_percent", 50)
             st.markdown(f'<div class="threshold-heading"><span>Fracture threshold</span><strong>{cutoff}<small>%</small></strong></div>', unsafe_allow_html=True)

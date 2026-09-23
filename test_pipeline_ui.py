@@ -60,11 +60,16 @@ def test_pipeline_ui():
     assert any(".play()" in html.proto.body and html.proto.unsafe_allow_javascript for html in app.get("html"))
     app.run()  # The trailer stays on the page alongside the workspace across reruns.
     assert not app.exception and len(app.get("video")) == 1
-    assert app.toggle[0].label == "Animate flow" and app.toggle[0].value
-    app.toggle[0].set_value(False).run()
+    assert not app.get("video")[0].proto.loop
+    app.toggle(key="loop_trailer").set_value(True).run()
+    assert not app.exception and app.get("video")[0].proto.loop
+    app.toggle(key="loop_trailer").set_value(False).run()
+    assert not app.exception and not app.get("video")[0].proto.loop
+    assert app.toggle(key="animate_pipeline").value
+    app.toggle(key="animate_pipeline").set_value(False).run()
     assert not app.exception
     assert any("animation-play-state:paused!important" in item.value for item in app.markdown)
-    app.toggle[0].set_value(True).run()
+    app.toggle(key="animate_pipeline").set_value(True).run()
     assert any("animation-play-state:running!important" in item.value for item in app.markdown)
     assert app.slider[0].label == "Fracture threshold" and app.slider[0].value == 50
     assert "Analysis settings" not in [expander.label for expander in app.expander]
