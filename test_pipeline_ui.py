@@ -55,11 +55,11 @@ def test_pipeline_ui():
     app = AppTest.from_file(str(Path(__file__).with_name("streamlit_app.py"))).run(timeout=30)
     assert not app.exception, app.exception
     assert len(app.get("iframe")) == 1
-    assert len(app.get("video")) == 0
-    app.button(key="watch_trailer").click().run()
-    assert not app.exception and len(app.get("video")) == 1
-    assert app.get("video")[0].proto.autoplay
-    app.run()  # A normal rerun returns to the analysis workspace.
+    trailer = app.get("video")  # Opens on its own for a new visit, no button needed.
+    assert len(trailer) == 1 and trailer[0].proto.autoplay and trailer[0].proto.muted
+    assert any(".play()" in html.proto.body and html.proto.unsafe_allow_javascript for html in app.get("html"))
+    app.run()  # Shown once per session; a rerun returns to the analysis workspace.
+    assert not app.exception and len(app.get("video")) == 0
     assert app.toggle[0].label == "Animate flow" and app.toggle[0].value
     app.toggle[0].set_value(False).run()
     assert not app.exception
