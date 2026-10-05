@@ -5,7 +5,7 @@ Built with OpenCV, scikit-learn, and Streamlit.
 
 ## Live Demo
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://bone-fracture-detection4.streamlit.app)
 
 ---
 
@@ -40,14 +40,15 @@ X-ray image
 ## Repository Structure
 
 ```
-├── streamlit_app.py      # Main Streamlit application
-├── Random_Forest.pkl     # Trained classifier (download from Kaggle run)
-├── requirements.txt      # Python dependencies
-└── README.md
+├── streamlit_app.py                 # Main Streamlit application
+├── pipeline_viewer.html             # Stage-by-stage image viewer embedded in the app
+├── Random_Forest.pkl                # Trained classifier (4.7 MB, committed)
+├── bone-fracture-detection.ipynb    # Feature extraction, training and model comparison (Kaggle)
+├── test_canny_features.py           # Checks for the Canny feature block
+├── test_pipeline_ui.py              # Checks for the pipeline viewer
+├── assets/app-trailer.mp4           # Trailer shown on first visit
+└── requirements.txt
 ```
-
-> **Note:** `Random_Forest.pkl` is not tracked by Git (see `.gitignore`).  
-> Download it from your Kaggle notebook output and place it in the root directory.
 
 ---
 
@@ -55,16 +56,13 @@ X-ray image
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/<your-username>/<your-repo>.git
-cd <your-repo>
+git clone https://github.com/geraldadli/bone_fracture.git
+cd bone_fracture
 
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Add the model file
-# Copy Random_Forest.pkl into the project root
-
-# 4. Launch
+# 3. Launch
 streamlit run streamlit_app.py
 ```
 
@@ -72,13 +70,10 @@ streamlit run streamlit_app.py
 
 ## Deploy on Streamlit Community Cloud
 
-1. Push this repo to GitHub (make sure `Random_Forest.pkl` is included).
+1. Push this repo to GitHub (`Random_Forest.pkl` is already committed).
 2. Go to [share.streamlit.io](https://share.streamlit.io) → **New app**.
 3. Select your repo, branch `main`, and set **Main file** to `streamlit_app.py`.
 4. Click **Deploy**.
-
-> ⚠️ `Random_Forest.pkl` must be committed to the repo for Streamlit Cloud to find it.  
-> If the file exceeds GitHub's 100 MB limit, use [Git LFS](https://git-lfs.github.com/).
 
 ---
 
@@ -87,13 +82,18 @@ streamlit run streamlit_app.py
 The classifier was trained on the  
 [Bone Fracture Multi-Region X-ray dataset](https://www.kaggle.com/datasets/bmadushanirodrigo/fracture-multi-region-x-ray-data) on Kaggle.
 
-Training notebook: `bone_fracture_opencv.ipynb`
+Training notebook: `bone-fracture-detection.ipynb`. It extracts the 42 features from 9,246 training
+images and compares three classifiers on the same features:
 
-| Metric | Value |
-|--------|-------|
-| CV Accuracy (5-fold) | reported in notebook |
-| Test Accuracy | reported in notebook |
-| Test AUC | reported in notebook |
+| Model | CV accuracy (5-fold) | Test accuracy | Test AUC |
+|-------|----------------------|---------------|----------|
+| SVM (RBF) | 0.9925 ± 0.0014 | 0.9960 | 0.9980 |
+| **Random Forest** (used in the app) | **0.9931 ± 0.0015** | **1.0000** | **1.0000** |
+| Gradient Boosting | 0.9852 ± 0.0016 | 0.9822 | 0.9994 |
+
+Test set: 506 images (238 fractured, 268 not). These scores are on this dataset's own splits, and
+the dataset contains rotated copies of the same X-rays, so expect lower accuracy on X-rays from
+elsewhere. Research project, not a diagnostic tool.
 
 ---
 
